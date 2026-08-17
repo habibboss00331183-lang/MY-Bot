@@ -14,18 +14,25 @@ logger = logging.getLogger(__name__)
 # ইউজার ডেটা সংরক্ষণের জন্য ডিকশনারি
 user_data = {}
 
-# প্যানেলের জন্য ১০টি ইউনিক পাসওয়ার্ড বা কি (Key) লিস্ট
+# প্যানেলের জন্য মোট ৫০টি ইউনিক পাসওয়ার্ড বা কি (Key) লিস্ট
 PANEL_KEYS = [
-    "TGR-DRIP-98X7Y-Z65QW-2026",
-    "BRMOD-PASS-43KJH-89LMN-PRO",
-    "FF-PANEL-X99V2-B77RT-VIP",
-    "SECURE-KEY-88HGF-33DSA-M1",
-    "ADMIN-TGR-55ABC-77XYZ-PASS",
-    "EXPERT-MOD-12QWE-99POI-LK",
-    "LOCKED-KEY-0099V-44BNM-END",
-    "VIP-PANEL-777GH-55JYU-KEY",
-    "CLIENT-MOD-1199A-22BCX-OP",
-    "ULTRA-KEY-5544N-33MKO-SYS"
+    "TGR-DRIP-98X7Y-Z65QW-2026", "BRMOD-PASS-43KJH-89LMN-PRO", "FF-PANEL-X99V2-B77RT-VIP",
+    "SECURE-KEY-88HGF-33DSA-M1", "ADMIN-TGR-55ABC-77XYZ-PASS", "EXPERT-MOD-12QWE-99POI-LK",
+    "LOCKED-KEY-0099V-44BNM-END", "VIP-PANEL-777GH-55JYU-KEY", "CLIENT-MOD-1199A-22BCX-OP",
+    "ULTRA-KEY-5544N-33MKO-SYS", "TGR-PRO-111AA-222BB-CC", "BRMOD-VIP-999ZZ-888YY-XX",
+    "FF-HACK-55443-22110-PASS", "SECURE-NET-12345-67890-KEY", "ADMIN-BD-98765-43210-SYS",
+    "KEY-GEN-11223-33445-PRO", "PANEL-ROOT-55667-77889-VIP", "FREE-FIRE-99001-11223-MOD",
+    "DRIP-KEY-44332-22110-SAFE", "TGR-SHOP-77889-99001-PASS", "MOD-BD-12312-34534-PRO",
+    "CLIENT-ROOT-98798-65465-KEY", "VIP-USER-11223-44556-SYS", "POWER-KEY-77665-55443-OP",
+    "FAST-MOD-33221-11009-VIP", "AUTO-KEY-99887-77665-PRO", "GAME-PASS-55443-33221-SAFE",
+    "ROOT-SYS-11223-99887-KEY", "ANDROID-MOD-44556-66778-PASS", "IOS-PANEL-12398-76543-VIP",
+    "MAX-KEY-88776-55432-PRO", "ULTRA-MOD-11229-99881-SYS", "EXPERT-KEY-33445-55667-SAFE",
+    "MASTER-PANEL-99009-88118-OP", "GHOST-KEY-55667-11223-VIP", "FIRE-MOD-22334-44556-PRO",
+    "SPEED-KEY-77889-11223-SYS", "SMOOTH-MOD-33445-66778-PASS", "NO-LAG-99887-44556-VIP",
+    "SAFE-KEY-11223-77889-PRO", "CUSTOM-MOD-55667-33445-SAFE", "ONLINE-KEY-99001-22334-SYS",
+    "OFFICIAL-PANEL-44556-77889-OP", "TGR-SPECIAL-12345-98765-VIP", "BR-CLIENT-11223-55667-PRO",
+    "DRIP-MOD-99887-11223-PASS", "FINAL-KEY-55443-77889-SYS", "TOP-PANEL-33221-99887-VIP",
+    "BEST-MOD-11223-44332-PRO", "SECRET-KEY-99009-11223-SAFE"
 ]
 
 # ফিক্সড নিচের মেনু বাটন (ইমোজি সহ)
@@ -48,17 +55,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if user_id not in user_data:
         user_data[user_id] = {
             "name": user_name,
-            "points": 0,  # নতুন ইউজারের ব্যালেন্স ০
+            "points": 0,  # নতুন ইউজারের ব্যালেন্স নিশ্চিতভাবে ০
             "keys": [],
             "referrals": 0
         }
 
-    # রেফারেল লজিক (প্রতি রেফারে ২০ পয়েন্ট)
+    # রেফারেল লজিক (প্রতি রেফারে নিশ্চিত ২০ পয়েন্ট)
     if args and args[0].isdigit():
         referrer_id = int(args[0])
-        # নিজের লিঙ্কে নিজে যেন রেফার কাউন্ট না হয় এবং সে যেন ডাটাবেজে থাকে
         if referrer_id != user_id and referrer_id in user_data:
-            # চেক করতে পারি ইউজার আগে একবার রেফার হয়েছে কি না, তবে সিম্পল রাখার জন্য প্রতি স্টার্টে কাউন্ট হবে
             user_data[referrer_id]["points"] += 20
             user_data[referrer_id]["referrals"] += 1
             try:
@@ -70,14 +75,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 pass
 
     welcome_msg = (
-        f"🤖 *Welcome to FF Panel Shop Official Bot!*\n\n"
+        f"🤖 Welcome to FF Panel Shop Official Bot!\n\n"
         f"👤 User: {user_name}\n"
-        f"🆔 User ID: `{user_id}`\n"
+        f"🆔 User ID: {user_id}\n"
         f"💎 Balance: {user_data[user_id]['points']} Points\n\n"
         f"নিচের মেনু থেকে আপনার প্রয়োজনীয় অপশন বেছে নিন।"
     )
 
-    await update.message.reply_text(welcome_msg, reply_markup=get_main_keyboard(), parse_mode="Markdown")
+    await update.message.reply_text(welcome_msg, reply_markup=get_main_keyboard())
 
 # টেক্সট মেসেজ ও বাটন হ্যান্ডলার
 async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -97,27 +102,26 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if text == "👤 Profile":
         u_data = user_data[user_id]
         profile_text = (
-            f"👤 *প্রফাইল তথ্য:*\n\n"
+            f"👤 প্রফাইল তথ্য:\n\n"
             f"👤 নাম: {u_data['name']}\n"
-            f"🆔 ইউজার আইডি: `{user_id}`\n"
+            f"🆔 ইউজার আইডি: {user_id}\n"
             f"💎 Balance: {u_data['points']} Points\n"
             f"👥 মোট রেফার: {u_data['referrals']} জন"
         )
-        await update.message.reply_text(profile_text, parse_mode="Markdown")
+        await update.message.reply_text(profile_text)
 
     elif text == "🔗 Refer":
-        # বটের ইউজারনেম ডাইনামিকলি ফেচ করা যাতে ১০০% নিখুঁত লিংক তৈরি হয়
         bot_username = context.bot.username
         refer_link = f"https://t.me/{bot_username}?start={user_id}"
         
+        # লিংক যেন কোনোভাবেই লুকাতে না পারে, তাই একদম প্লেন টেক্সটে পাঠানো হলো
         refer_text = (
-            f"🔗 *Your Unique Referral Link*\n\n"
-            f"`{refer_link}`\n\n"
+            f"🔗 Your Unique Referral Link:\n\n"
+            f"{refer_link}\n\n"
             f"👥 Total Referrals: {user_data[user_id]['referrals']} জন\n"
             f"🎁 Earn 20 points for each valid referral."
         )
-        # Markdown ব্যবহার করে লিংকটি সুন্দরভাবে পাঠানো হলো
-        await update.message.reply_text(refer_text, parse_mode="Markdown")
+        await update.message.reply_text(refer_text)
 
     elif text == "🎟 Redeem Code":
         await update.message.reply_text("🎟 Enter your redeem code.")
@@ -134,11 +138,11 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         keyboard = [[InlineKeyboardButton("🌐 Open Shop Website", url=SHOP_FILE_LINK)]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         shop_text = (
-            f"🛍 *Welcome to our Official Shop!*\n\n"
+            f"🛍 Welcome to our Official Shop!\n\n"
             f"You can buy premium products directly from our website.\n\n"
             f"🔗 Click here: {SHOP_FILE_LINK}"
         )
-        await update.message.reply_text(shop_text, reply_markup=reply_markup, parse_mode="Markdown")
+        await update.message.reply_text(shop_text, reply_markup=reply_markup)
 
     elif text == "📁 My Keys":
         user_keys = user_data[user_id]["keys"]
@@ -146,7 +150,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             await update.message.reply_text("❌ You have not purchased any keys yet!")
         else:
             keys_list = "\n".join(user_keys)
-            await update.message.reply_text(f"🔑 *Your Keys:*\n\n{keys_list}", parse_mode="Markdown")
+            await update.message.reply_text(f"🔑 Your Keys:\n\n{keys_list}")
 
     else:
         await update.message.reply_text("দয়া করে নিচের মেনু বাটনগুলো ব্যবহার করুন।", reply_markup=get_main_keyboard())
@@ -192,7 +196,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         ]
         await query.edit_message_text(text="💎 Select a Product:", reply_markup=InlineKeyboardMarkup(keyboard))
 
-    # ৪. কেনাকাটা এবং পয়েন্ট কাটার লজিক (রেন্ডম পাসওয়ার্ড জেনারেটর)
+    # ৪. কেনাকাটা এবং পয়েন্ট কাটার লজিক (৫০টি পাসওয়ার্ড থেকে রেন্ডম জেনারেটর)
     elif data.startswith("buy_"):
         parts = data.split("_")
         product_type = parts[1] # br বা drip
@@ -215,7 +219,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             p_name = "BR MOD ROOT" if product_type == "br" else "DRIP CLIENT NON ROOT"
             
             await query.edit_message_text(
-                text=f"✅ সফলভাবে আপনার *{p_name}* কী (Key) জেনারেট হয়েছে!\n\n🔑 পাসওয়ার্ড: `{assigned_key}`\n\nএটি '📁 My Keys' অপশনে সংরক্ষিত হয়েছে।"
+                text=f"✅ সফলভাবে আপনার {p_name} কী (Key) জেনারেট হয়েছে!\n\n🔑 পাসওয়ার্ড: {assigned_key}\n\nএটি '📁 My Keys' অপশনে সংরক্ষিত হয়েছে।"
             )
 
 def main():
