@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 # ইউজার ডেটা সংরক্ষণের জন্য ডিকশনারি
 user_data = {}
 
-# প্যানেলের জন্য মোট ৫০টি ইউনিক পাসওয়ার্ড বা কি (Key) লিস্ট
+# প্যানেলের জন্য ঠিক ৫০টি ইউনিক পাসওয়ার্ড বা কি (Key) লিস্ট
 PANEL_KEYS = [
     "TGR-DRIP-98X7Y-Z65QW-2026", "BRMOD-PASS-43KJH-89LMN-PRO", "FF-PANEL-X99V2-B77RT-VIP",
     "SECURE-KEY-88HGF-33DSA-M1", "ADMIN-TGR-55ABC-77XYZ-PASS", "EXPERT-MOD-12QWE-99POI-LK",
@@ -35,7 +35,7 @@ PANEL_KEYS = [
     "BEST-MOD-11223-44332-PRO", "SECRET-KEY-99009-11223-SAFE"
 ]
 
-# ফিক্সড নিচের মেনু বাটন (ইমোজি সহ)
+# ফিক্সড নিচের মেনু বাটন
 def get_main_keyboard():
     keyboard = [
         [KeyboardButton("👤 Profile"), KeyboardButton("🔗 Refer")],
@@ -55,12 +55,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if user_id not in user_data:
         user_data[user_id] = {
             "name": user_name,
-            "points": 0,  # নতুন ইউজারের ব্যালেন্স নিশ্চিতভাবে ০
+            "points": 0,  # নতুন ইউজারের ব্যালেন্স একদম ০
             "keys": [],
             "referrals": 0
         }
 
-    # রেফারেল লজিক (প্রতি রেফারে নিশ্চিত ২০ পয়েন্ট)
+    # রেফারেল লজিক (প্রতি রেফারে সঠিকভাবে ২০ পয়েন্ট)
     if args and args[0].isdigit():
         referrer_id = int(args[0])
         if referrer_id != user_id and referrer_id in user_data:
@@ -112,9 +112,9 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     elif text == "🔗 Refer":
         bot_username = context.bot.username
+        # প্রতিটি ইউজারের জন্য সম্পূর্ণ আলাদা এবং ইউনিক রেফার লিংক
         refer_link = f"https://t.me/{bot_username}?start={user_id}"
         
-        # লিংক যেন কোনোভাবেই লুকাতে না পারে, তাই একদম প্লেন টেক্সটে পাঠানো হলো
         refer_text = (
             f"🔗 Your Unique Referral Link:\n\n"
             f"{refer_link}\n\n"
@@ -166,7 +166,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     data = query.data
 
-    # ১. BR MOD ROOT মেনু (পয়েন্ট অপশন)
     if data == "menu_br":
         keyboard = [
             [InlineKeyboardButton("1 days - 210 Pts", callback_data="buy_br_210")],
@@ -177,7 +176,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         ]
         await query.edit_message_text(text="💎 Select a Duration:\n\n📦 Product: BR MOD ROOT", reply_markup=InlineKeyboardMarkup(keyboard))
 
-    # ২. DRIP CLIENT NON ROOT মেনু (পয়েন্ট অপশন)
     elif data == "menu_drip":
         keyboard = [
             [InlineKeyboardButton("1 days - 310 Pts", callback_data="buy_drip_310")],
@@ -188,7 +186,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         ]
         await query.edit_message_text(text="💎 Select a Duration:\n\n📦 Product: DRIP CLIENT NON ROOT", reply_markup=InlineKeyboardMarkup(keyboard))
 
-    # ৩. ব্যাক বাটন
     elif data == "back_to_main":
         keyboard = [
             [InlineKeyboardButton("📦 BR MOD ROOT", callback_data="menu_br")],
@@ -196,15 +193,13 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         ]
         await query.edit_message_text(text="💎 Select a Product:", reply_markup=InlineKeyboardMarkup(keyboard))
 
-    # ৪. কেনাকাটা এবং পয়েন্ট কাটার লজিক (৫০টি পাসওয়ার্ড থেকে রেন্ডম জেনারেটর)
     elif data.startswith("buy_"):
         parts = data.split("_")
-        product_type = parts[1] # br বা drip
-        cost = int(parts[2])    # পয়েন্টের পরিমাণ
+        product_type = parts[1]
+        cost = int(parts[2])
         
         current_points = user_data[user_id]["points"]
         
-        # ব্যালেন্স কম থাকলে শপ লিংকের সাথে মেসেজ দেখাবে
         if current_points < cost:
             keyboard = [[InlineKeyboardButton("🌐 Open Shop Website", url=SHOP_FILE_LINK)]]
             await query.message.reply_text(
@@ -212,8 +207,16 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 reply_markup=InlineKeyboardMarkup(keyboard)
             )
         else:
+            # ইউনিক পাসওয়ার্ড দেওয়ার লজিক (ইতিমধ্যে যেগুل দেওয়া হয়েছে সেগুলো বাদ দিয়ে বাকিগুলো থেকে রেন্ডম সিলেক্ট করবে)
+            all_assigned_keys = [k for u in user_data.values() for k in u["keys"]]
+            available_keys = [k for k in PANEL_KEYS if k not in all_assigned_keys]
+            
+            if not available_keys:
+                await query.message.reply_text("❌ দুঃখিত, সমস্ত প্যানেল কি (Key) স্টক শেষ হয়ে গেছে!")
+                return
+
             user_data[user_id]["points"] -= cost
-            assigned_key = random.choice(PANEL_KEYS)
+            assigned_key = random.choice(available_keys)
             user_data[user_id]["keys"].append(assigned_key)
             
             p_name = "BR MOD ROOT" if product_type == "br" else "DRIP CLIENT NON ROOT"
