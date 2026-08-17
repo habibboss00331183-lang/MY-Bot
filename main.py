@@ -2,19 +2,19 @@ import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
 
-# আপনার টেলিগ্রাম বটের টোকেন এখানে বসানো আছে
+# আপনার টেলিগ্রাম বটের টোকেন
 TOKEN = "7961226740:AAEMf06xUj1V63r84FF8d1Z6kD7f4xX7x-g"
 
 # লগিং সেটআপ
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
-logger =logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 # মেমোরিতে ডেটা সংরক্ষণের জন্য ডিকশনারি
 user_points = {}
 user_referrals = {}
 user_data = {}
 
-# /start কমান্ড এবং নিচের রিমোট কিবোর্ড (Persistent Menu)
+# /start কমান্ড হ্যান্ডলার
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_user.id
     user_name = update.effective_user.first_name
@@ -65,12 +65,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     welcome_msg = (
         f"🤖 **Welcome to FF Panel Shop Official Bot!**\n\n"
-        f"হ্যালো {user_name}! আপনার অ্যাকাউন্ট সফলভাবে তৈরি হয়েছে।\n"
-        f"নিচের মেনু বা বাটনগুলো ব্যবহার করে সেবা উপভোগ করুন।"
+        f"হ্যালো {user_name}! আপনার অ্যাকাউন্ট সফলভাবে তৈরি হয়েছে।"
     )
 
     await update.message.reply_text(welcome_msg, reply_markup=markup, parse_mode="Markdown")
-    await update.message.reply_text("📌 অতিরিক্ত অপشنসমূহ:", reply_markup=reply_markup)
+    await update.message.reply_text("📌 অতিরিক্ত অপশনসমূহ:", reply_markup=reply_markup)
 
 # ইনলাইন বাটন ক্লিক হ্যান্ডলার
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -94,7 +93,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     elif query.data == "contact":
         await query.edit_message_text(text="📞 সাহায্যের জন্য এডমিনের সাথে যোগাযোগ করুন: @Admin")
 
-# সাধারণ টেক্সট মেসেজ হ্যান্ডলার (নিচের কিবোর্ড বাটনগুলোর জন্য)
+# সাধারণ টেক্সট মেসেজ হ্যান্ডলার
 async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     text = update.message.text
     user_id = update.effective_user.id
@@ -106,7 +105,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         u_name = user_data[user_id]["name"]
         pts = user_data[user_id]["points"]
         refs = user_data[user_id]["referrals"]
-        await update.message.reply_text(f"👤 **প্রফাইল তথ্য:**\n\nনাম: {u_name}\nআইডি: {user_id}\nপয়েন্ট: {pts}\nরেফার: {refs}")
+        await update.message.reply_text(f"👤 **প্রফাইল তথ্য:**\n\nনাম: {u_name}\nআইডি: {user_id}\nপয়েন্ট: {pts}\nরেফার: {refs}", parse_mode="Markdown")
     elif text == "🔗 Refer":
         bot_username = context.bot.username
         refer_link = f"https://t.me/{bot_username}?start={user_id}"
@@ -120,15 +119,12 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await update.message.reply_text("দয়া করে নিচের মেনু বাটনগুলো ব্যবহার করুন।")
 
 def main():
-    # বট অ্যাপ্লিকেশন তৈরি
     application = Application.builder().token(TOKEN).build()
 
-    # হ্যান্ডলার রেজিস্টার করা
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CallbackQueryHandler(button_handler))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler))
 
-    # বট পোলিং শুরু করা (রেন্ডারের জন্য ১০০% নিরাপদ পদ্ধতি)
     application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == "__main__":
