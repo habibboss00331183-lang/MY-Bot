@@ -3,7 +3,7 @@ import random
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
 
-# আপনার সঠিক টেলিগ্রাম টোকেন
+# আপনার সঠিক টেলিগ্রাম টোকেন এবং শপ লিংক
 TOKEN = "8806345012:AAFxivp7Qnh-dJccphN2Fhf-gIVp5fZs9NQ"
 SHOP_FILE_LINK = "https://gofile.io/d/OYS4MC9v"
 
@@ -28,7 +28,7 @@ PANEL_KEYS = [
     "ULTRA-KEY-5544N-33MKO-SYS"
 ]
 
-# ফিক্সড মেনু বাটন (ইমোজি সহ)
+# ফিক্সড নিচের মেনু বাটন (ইমোজি সহ)
 def get_main_keyboard():
     keyboard = [
         [KeyboardButton("👤 Profile"), KeyboardButton("🔗 Refer")],
@@ -126,8 +126,8 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         keyboard = [[InlineKeyboardButton("🌐 Open Shop Website", url=SHOP_FILE_LINK)]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         shop_text = (
-            "🛍 **Welcome to our Official Shop!**\n\n"
-            "You can buy premium products directly from our website.\n\n"
+            f"🛍 **Welcome to our Official Shop!**\n\n"
+            f"You can buy premium products directly from our website.\n\n"
             f"🔗 Click here: {SHOP_FILE_LINK}"
         )
         await update.message.reply_text(shop_text, reply_markup=reply_markup, parse_mode="Markdown")
@@ -154,7 +154,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     data = query.data
 
-    # ১. BR MOD ROOT মেনু (স্ক্রিনশট ১ অনুযায়ী পয়েন্ট)
+    # ১. BR MOD ROOT মেনু (পয়েন্ট অপশন)
     if data == "menu_br":
         keyboard = [
             [InlineKeyboardButton("1 days - 210 Pts", callback_data="buy_br_210")],
@@ -163,9 +163,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             [InlineKeyboardButton("30 Days - 1900 Pts", callback_data="buy_br_1900")],
             [InlineKeyboardButton("🔙 Back", callback_data="back_to_main")]
         ]
-        await query.edit_message_text(text="💎 Select a Duration (BR MOD ROOT):", reply_markup=InlineKeyboardMarkup(keyboard))
+        await query.edit_message_text(text="💎 Select a Duration:\n\n📦 Product: BR MOD ROOT", reply_markup=InlineKeyboardMarkup(keyboard))
 
-    # ২. DRIP CLIENT NON ROOT মেনু (স্ক্রিনশট ২ অনুযায়ী পয়েন্ট)
+    # ২. DRIP CLIENT NON ROOT মেনু (পয়েন্ট অপশন)
     elif data == "menu_drip":
         keyboard = [
             [InlineKeyboardButton("1 days - 310 Pts", callback_data="buy_drip_310")],
@@ -174,7 +174,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             [InlineKeyboardButton("30 Days - 3690 Pts", callback_data="buy_drip_3690")],
             [InlineKeyboardButton("🔙 Back", callback_data="back_to_main")]
         ]
-        await query.edit_message_text(text="💎 Select a Duration (DRIP CLIENT NON ROOT):", reply_markup=InlineKeyboardMarkup(keyboard))
+        await query.edit_message_text(text="💎 Select a Duration:\n\n📦 Product: DRIP CLIENT NON ROOT", reply_markup=InlineKeyboardMarkup(keyboard))
 
     # ৩. ব্যাক বাটন
     elif data == "back_to_main":
@@ -184,7 +184,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         ]
         await query.edit_message_text(text="💎 Select a Product:", reply_markup=InlineKeyboardMarkup(keyboard))
 
-    # ৪. কেনাকাটা এবং পয়েন্ট কাটার লজিক
+    # ৪. কেনাকাটা এবং পয়েন্ট কাটার লজিক (রেন্ডম পাসওয়ার্ড জেনারেটর)
     elif data.startswith("buy_"):
         parts = data.split("_")
         product_type = parts[1] # br বা drip
