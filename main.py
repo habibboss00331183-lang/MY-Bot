@@ -1,138 +1,135 @@
 import logging
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
+from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
 
 # আপনার টেলিগ্রাম বটের টোকেন এখানে বসানো আছে
-TOKEN = "7961226749:AAEMf06xUj1V63r84Ff8d1Z6K97f4kX7x-g"
+TOKEN = "7961226740:AAEMf06xUj1V63r84FF8d1Z6kD7f4xX7x-g"
 
-# ডামি ডেটাবেস
+# লগিং সেটআপ
+logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
+logger =logging.getLogger(__name__)
+
+# মেমোরিতে ডেটা সংরক্ষণের জন্য ডিকশনারি
+user_points = {}
+user_referrals = {}
 user_data = {}
 
-# /start কমান্ড ও নিচের রিপ্লাই কিবোর্ড (Persistent Menu)
-async def start(update, context):
-    user = update.effective_user
-    user_id = user.id
+# /start কমান্ড এবং নিচের রিমোট কিবোর্ড (Persistent Menu)
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user_id = update.effective_user.id
+    user_name = update.effective_user.first_name
+    
     args = context.args
     
+    # নতুন ইউজার রেজিস্ট্রেশন
+    if user_id not in user_points:
+        user_points[user_id] = 0
     if user_id not in user_data:
         user_data[user_id] = {
-            "name": user.full_name,
+            "name": user_name,
             "points": 0,
             "keys": [],
             "referrals": 0
         }
-        
-        # রেফারেল লজিক
-        if args and args[0].isdigit():
-            referrer_id = int(args[0])
-            if referrer_id != user_id and referrer_id in user_data:
-                user_data[referrer_id]["points"] += 20
-                user_data[referrer_id]["referrals"] += 1
-                try:
-                    await context.bot.send_message(
-                        chat_id=referrer_id, 
-                        text="🎉 অভিনন্দন! আপনার রেফারেল লিংকে একজন জয়েন করায় ২০ পয়েন্ট যোগ হয়েছে।"
-                    )
-                except:
-                    pass
 
-    # স্ক্রিনশটের নিচের দিকের মেনু বাটনগুলো (Reply Keyboard)
+    # রেফারেল লজিক
+    if args and args[0].isdigit():
+        referrer_id = int(args[0])
+        if referrer_id != user_id and referrer_id in user_points:
+            user_points[referrer_id] += 10
+            user_referrals[referrer_id] = user_referrals.get(referrer_id, 0) + 1
+            if referrer_id in user_data:
+                user_data[referrer_id]["points"] += 10
+                user_data[referrer_id]["referrals"] += 1
+            try:
+                await context.bot.send_message(
+                    chat_id=referrer_id,
+                    text="🎉 অভিনন্দন! আপনার রেফারেল লিংক থেকে একজন নতুন ইউজার যুক্ত হয়েছে এবং আপনি ১০ পয়েন্ট বোনাস পেয়েছেন!"
+                )
+            except:
+                pass
+
+    # ইনলাইন বাটন বা মেইন মেনু
+    keyboard = [
+        [InlineKeyboardButton("🔗 Refer & Earn", callback_data="refer"), InlineKeyboardButton("💰 My Points", callback_data="points")],
+        [InlineKeyboardButton("🛒 Shop Now", callback_data="buy"), InlineKeyboardButton("📞 Contact Us", callback_data="contact")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    # নিচের ফিক্সড বাটন (Reply Keyboard)
     reply_keyboard = [
         [KeyboardButton("👤 Profile"), KeyboardButton("🔗 Refer")],
-        [KeyboardButton("🎟 Redeem Code"), KeyboardButton("🔑 Get Key")],
-        [KeyboardButton("🛒 Shop Now"), KeyboardButton("🔑 My Keys")]
+        [KeyboardButton("💰 My Points"), KeyboardButton("🛒 Shop Now")]
     ]
     markup = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True)
 
-    await update.message.reply_text(
-        f"✅ Verification successful.\n\nস্বাগতম {user.first_name}!\nনিচের মেনু থেকে আপনার প্রয়োজনীয় অপশনটি বেছে নিন:",
-        reply_markup=markup
+    welcome_msg = (
+        f"🤖 **Welcome to FF Panel Shop Official Bot!**\n\n"
+        f"হ্যালো {user_name}! আপনার অ্যাকাউন্ট সফলভাবে তৈরি হয়েছে।\n"
+        f"নিচের মেনু বা বাটনগুলো ব্যবহার করে সেবা উপভোগ করুন।"
     )
 
-# নিচের মেনু বাটনের টেক্সট হ্যান্ডলার
-async def message_handler(update, context):
-    text = update.message.text
-    user_id = update.effective_user.id
-    user = update.effective_user
-    bot_username = (await context.bot.get_me()).username
+    await update.message.reply_text(welcome_msg, reply_markup=markup, parse_mode="Markdown")
+    await update.message.reply_text("📌 অতিরিক্ত অপشنসমূহ:", reply_markup=reply_markup)
 
-    if user_id not in user_data:
-        user_data[user_id] = {"name": user.full_name, "points": 0, "keys": [], "referrals": 0}
-
-    if text == "👤 Profile":
-        data = user_data[user_id]
-        profile_text = (
-            f"👤 **User Profile**\n\n"
-            f"📌 **Name:** {user.full_name}\n"
-            f"🆔 **User ID:** `{user_id}`\n"
-            f"💰 **Points / Tokens:** {data['points']} Points\n"
-            f"👥 **Total Referrals:** {data['referrals']} জন"
-        )
-        await update.message.reply_text(profile_text, parse_mode="Markdown")
-
-    elif text == "🔗 Refer":
-        ref_link = f"https://t.me/{bot_username}?start={user_id}"
-        total_ref = user_data[user_id]["referrals"]
-        await update.message.reply_text(
-            f"🔗 **Your Referral Link**\n`{ref_link}`\n\n"
-            f"👥 **Total Referrals:** {total_ref}\n"
-            f"🎁 Earn 20 points for each valid referral."
-        )
-
-    elif text == "🎟 Redeem Code":
-        await update.message.reply_text("❌ Invalid redeem code.")
-
-    elif text == "🔑 Get Key":
-        await update.message.reply_text("🔑 আপনার জেনারেট করা ফ্রি কি (Key) পেতে চ্যানেলে যুক্ত থাকুন।")
-
-    elif text == "🛒 Shop Now":
-        # প্রোডাক্ট বা ইনলাইন শপ মেনু
-        keyboard = [
-            [InlineKeyboardButton("📦 DRIP CLIENT NON ROOT", callback_data='p1')],
-            [InlineKeyboardButton("📦 BR MOD ROOT", callback_data='p2')],
-            [InlineKeyboardButton("📦 ANGRY MOD", callback_data='p3')],
-            [InlineKeyboardButton("📦 PRIME MOD", callback_data='p4')],
-            [InlineKeyboardButton("📦 HG CHEAT", callback_data='p5')],
-            [InlineKeyboardButton("📦 zytron Pro Internal", callback_data='p6')],
-            [InlineKeyboardButton("📦 Anonymous Pro", callback_data='p7')]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await update.message.reply_text("🛒 **Select a Product:**", reply_markup=reply_markup)
-
-    elif text == "🔑 My Keys":
-        keys = user_data[user_id]["keys"]
-        if keys:
-            keys_list = "\n".join(keys)
-            await update.message.reply_text(f"🔑 **Your Active Keys:**\n{keys_list}")
-        else:
-            await update.message.reply_text("🔑 আপনার কোনোভল অ্যাক্টিভ কি (Key) নেই।")
-
-# শপ বাটনের ইনলাইন ক্লিক হ্যান্ডলার
-async def button_handler(update, context):
+# ইনলাইন বাটন ক্লিক হ্যান্ডলার
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
-    
-    products = {
-        'p1': 'DRIP CLIENT NON ROOT',
-        'p2': 'BR MOD ROOT',
-        'p3': 'ANGRY MOD',
-        'p4': 'PRIME MOD',
-        'p5': 'HG CHEAT',
-        'p6': 'zytron Pro Internal',
-        'p7': 'Anonymous Pro'
-    }
-    
-    prod_name = products.get(query.data, 'Product')
-    await query.message.reply_text(f"🛒 আপনি সিলেক্ট করেছেন: **{prod_name}**\nপেমেন্ট বা কেনার বিস্তারিত জানতে এডমিনের সাথে যোগাযোগ করুন।")
+    user_id = query.from_user.id
+
+    if user_id not in user_data:
+        user_data[user_id] = {"name": query.from_user.first_name, "points": 0, "keys": [], "referrals": 0}
+
+    if query.data == "refer":
+        bot_username = context.bot.username
+        refer_link = f"https://t.me/{bot_username}?start={user_id}"
+        await query.edit_message_text(text=f"🔗 **আপনার রেফারেল লিংক:**\n\n{refer_link}\n\nপ্রতিটি রেফারে পাবেন ১০ পয়েন্ট করে ফ্রি!")
+    elif query.data == "points":
+        pts = user_data[user_id]["points"]
+        refs = user_data[user_id]["referrals"]
+        await query.edit_message_text(text=f"💰 **আপনার অ্যাকাউন্ট স্ট্যাটাস:**\n\nপয়েন্ট: {pts}\nমোট রেফার: {refs} জন")
+    elif query.data == "buy":
+        await query.edit_message_text(text="🛒 শপ মেনু ফাঁকা রয়েছে। শীঘ্রই নতুন আইটেম যুক্ত করা হবে।")
+    elif query.data == "contact":
+        await query.edit_message_text(text="📞 সাহায্যের জন্য এডমিনের সাথে যোগাযোগ করুন: @Admin")
+
+# সাধারণ টেক্সট মেসেজ হ্যান্ডলার (নিচের কিবোর্ড বাটনগুলোর জন্য)
+async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    text = update.message.text
+    user_id = update.effective_user.id
+
+    if user_id not in user_data:
+        user_data[user_id] = {"name": update.effective_user.first_name, "points": 0, "keys": [], "referrals": 0}
+
+    if text == "👤 Profile":
+        u_name = user_data[user_id]["name"]
+        pts = user_data[user_id]["points"]
+        refs = user_data[user_id]["referrals"]
+        await update.message.reply_text(f"👤 **প্রফাইল তথ্য:**\n\nনাম: {u_name}\nআইডি: {user_id}\nপয়েন্ট: {pts}\nরেফার: {refs}")
+    elif text == "🔗 Refer":
+        bot_username = context.bot.username
+        refer_link = f"https://t.me/{bot_username}?start={user_id}"
+        await update.message.reply_text(f"🔗 আপনার রেফারেল লিংক:\n{refer_link}")
+    elif text == "💰 My Points":
+        pts = user_data[user_id]["points"]
+        await update.message.reply_text(f"💰 আপনার বর্তমান পয়েন্ট: {pts}")
+    elif text == "🛒 Shop Now":
+        await update.message.reply_text("🛒 শপ সেকশনে আপনাকে স্বাগতম।")
+    else:
+        await update.message.reply_text("দয়া করে নিচের মেনু বাটনগুলো ব্যবহার করুন।")
 
 def main():
+    # বট অ্যাপ্লিকেশন তৈরি
     application = Application.builder().token(TOKEN).build()
 
+    # হ্যান্ডলার রেজিস্টার করা
     application.add_handler(CommandHandler("start", start))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler))
     application.add_handler(CallbackQueryHandler(button_handler))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler))
 
-    application.run_polling()
+    # বট পোলিং শুরু করা (রেন্ডারের জন্য ১০০% নিরাপদ পদ্ধতি)
+    application.run_polling(allowed_updates=Update.ALL_TYPES)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
