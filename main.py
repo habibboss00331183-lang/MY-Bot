@@ -1,5 +1,9 @@
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 import logging
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler
+
+# আপনার টেলিগ্রাম বটের টোকেন এখানে বসিয়ে দিন
+TOKEN = "7961226749:AAEMf06xUj1V63r84Ff8d1Z6K97f4kX7x-g"
 
 # ডামি ডেটাবেস
 user_points = {}
@@ -26,7 +30,7 @@ async def start(update, context):
                 except:
                     pass
 
-    # এখানে নতুন রেফারেল ও পয়েন্ট বাটনগুলো যুক্ত করা হলো
+    # বটের মূল মেনু ও বাটনগুলো
     keyboard = [
         [InlineKeyboardButton("🔗 Refer & Earn", callback_data='referral')],
         [InlineKeyboardButton("💰 My Points", callback_data='points')],
@@ -37,7 +41,7 @@ async def start(update, context):
         [InlineKeyboardButton("🟩 Official Rules & Safety", callback_data='rules')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text("স্বাগতম! নিচের অপশনগুলো থেকে বেছে নিন:", reply_markup=reply_markup)
+    await update.message.reply_text("স্বাগতম! নিচের অপশনগুলো থেকে আপনার প্রয়োজনীয় অপশনটি বেছে নিন:", reply_markup=reply_markup)
 
 # বাটন ক্লিকে রেসপন্স হ্যান্ডলার
 async def button_handler(update, context):
@@ -69,3 +73,17 @@ async def button_handler(update, context):
         await query.message.reply_text("🛒 প্যানেল কেনার নিয়মাবলী দেখে নিন।")
     elif query.data == 'rules':
         await query.message.reply_text("🟩 অফিসিয়াল রুলস এবং সেফটি মেনে চলুন।")
+
+def main():
+    # বট অ্যাপ্লিকেশন তৈরি
+    application = Application.builder().token(TOKEN).build()
+
+    # কমান্ড এবং বাটন হ্যান্ডলার যোগ করা
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CallbackQueryHandler(button_handler))
+
+    # বট চালু করা
+    application.run_polling()
+
+if __name__ == '__main__':
+    main()
