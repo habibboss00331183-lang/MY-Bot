@@ -2,7 +2,7 @@ import logging
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler
 
-# আপনার টেলিগ্রাম বটের টোকেন এখানে বসিয়ে দিন
+# আপনার টেলিগ্রাম বটের টোকেন এখানে বসানো আছে
 TOKEN = "7961226749:AAEMf06xUj1V63r84Ff8d1Z6K97f4kX7x-g"
 
 # ডামি ডেটাবেস
