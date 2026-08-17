@@ -1,88 +1,137 @@
 import logging
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters
 
 # আপনার টেলিগ্রাম বটের টোকেন এখানে বসানো আছে
 TOKEN = "7961226749:AAEMf06xUj1V63r84Ff8d1Z6K97f4kX7x-g"
 
 # ডামি ডেটাবেস
-user_points = {}
-user_referrals = {}
+user_data = {}
 
-# /start কমান্ড হ্যান্ডলার
+# /start কমান্ড ও নিচের রিপ্লাই কিবোর্ড (Persistent Menu)
 async def start(update, context):
-    user_id = update.effective_user.id
+    user = update.effective_user
+    user_id = user.id
     args = context.args
     
-    if user_id not in user_points:
-        user_points[user_id] = 0
+    if user_id not in user_data:
+        user_data[user_id] = {
+            "name": user.full_name,
+            "points": 0,
+            "keys": [],
+            "referrals": 0
+        }
         
+        # রেফারেল লজিক
         if args and args[0].isdigit():
             referrer_id = int(args[0])
-            if referrer_id != user_id and referrer_id in user_points:
-                user_points[referrer_id] += 10
-                user_referrals[referrer_id] = user_referrals.get(referrer_id, 0) + 1
+            if referrer_id != user_id and referrer_id in user_data:
+                user_data[referrer_id]["points"] += 20
+                user_data[referrer_id]["referrals"] += 1
                 try:
                     await context.bot.send_message(
                         chat_id=referrer_id, 
-                        text="🎉 অভিনন্দন! আপনার রেফারেল লিংকে একজন জয়েন করায় ১০ পয়েন্ট যোগ হয়েছে।"
+                        text="🎉 অভিনন্দন! আপনার রেফারেল লিংকে একজন জয়েন করায় ২০ পয়েন্ট যোগ হয়েছে।"
                     )
                 except:
                     pass
 
-    # বটের মূল মেনু ও বাটনগুলো
-    keyboard = [
-        [InlineKeyboardButton("🔗 Refer & Earn", callback_data='referral')],
-        [InlineKeyboardButton("💰 My Points", callback_data='points')],
-        [InlineKeyboardButton("💰 Price List", callback_data='price')],
-        [InlineKeyboardButton("📞 Contact Us", callback_data='contact')],
-        [InlineKeyboardButton("⚡ Features & Setup", callback_data='features')],
-        [InlineKeyboardButton("🛒 How To Buy Panel", callback_data='buy')],
-        [InlineKeyboardButton("🟩 Official Rules & Safety", callback_data='rules')]
+    # স্ক্রিনশটের নিচের দিকের মেনু বাটনগুলো (Reply Keyboard)
+    reply_keyboard = [
+        [KeyboardButton("👤 Profile"), KeyboardButton("🔗 Refer")],
+        [KeyboardButton("🎟 Redeem Code"), KeyboardButton("🔑 Get Key")],
+        [KeyboardButton("🛒 Shop Now"), KeyboardButton("🔑 My Keys")]
     ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text("স্বাগতম! নিচের অপশনগুলো থেকে আপনার প্রয়োজনীয় অপশনটি বেছে নিন:", reply_markup=reply_markup)
+    markup = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True)
 
-# বাটন ক্লিকে রেসপন্স হ্যান্ডলার
+    await update.message.reply_text(
+        f"✅ Verification successful.\n\nস্বাগতম {user.first_name}!\nনিচের মেনু থেকে আপনার প্রয়োজনীয় অপশনটি বেছে নিন:",
+        reply_markup=markup
+    )
+
+# নিচের মেনু বাটনের টেক্সট হ্যান্ডলার
+async def message_handler(update, context):
+    text = update.message.text
+    user_id = update.effective_user.id
+    user = update.effective_user
+    bot_username = (await context.bot.get_me()).username
+
+    if user_id not in user_data:
+        user_data[user_id] = {"name": user.full_name, "points": 0, "keys": [], "referrals": 0}
+
+    if text == "👤 Profile":
+        data = user_data[user_id]
+        profile_text = (
+            f"👤 **User Profile**\n\n"
+            f"📌 **Name:** {user.full_name}\n"
+            f"🆔 **User ID:** `{user_id}`\n"
+            f"💰 **Points / Tokens:** {data['points']} Points\n"
+            f"👥 **Total Referrals:** {data['referrals']} জন"
+        )
+        await update.message.reply_text(profile_text, parse_mode="Markdown")
+
+    elif text == "🔗 Refer":
+        ref_link = f"https://t.me/{bot_username}?start={user_id}"
+        total_ref = user_data[user_id]["referrals"]
+        await update.message.reply_text(
+            f"🔗 **Your Referral Link**\n`{ref_link}`\n\n"
+            f"👥 **Total Referrals:** {total_ref}\n"
+            f"🎁 Earn 20 points for each valid referral."
+        )
+
+    elif text == "🎟 Redeem Code":
+        await update.message.reply_text("❌ Invalid redeem code.")
+
+    elif text == "🔑 Get Key":
+        await update.message.reply_text("🔑 আপনার জেনারেট করা ফ্রি কি (Key) পেতে চ্যানেলে যুক্ত থাকুন।")
+
+    elif text == "🛒 Shop Now":
+        # প্রোডাক্ট বা ইনলাইন শপ মেনু
+        keyboard = [
+            [InlineKeyboardButton("📦 DRIP CLIENT NON ROOT", callback_data='p1')],
+            [InlineKeyboardButton("📦 BR MOD ROOT", callback_data='p2')],
+            [InlineKeyboardButton("📦 ANGRY MOD", callback_data='p3')],
+            [InlineKeyboardButton("📦 PRIME MOD", callback_data='p4')],
+            [InlineKeyboardButton("📦 HG CHEAT", callback_data='p5')],
+            [InlineKeyboardButton("📦 zytron Pro Internal", callback_data='p6')],
+            [InlineKeyboardButton("📦 Anonymous Pro", callback_data='p7')]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        await update.message.reply_text("🛒 **Select a Product:**", reply_markup=reply_markup)
+
+    elif text == "🔑 My Keys":
+        keys = user_data[user_id]["keys"]
+        if keys:
+            keys_list = "\n".join(keys)
+            await update.message.reply_text(f"🔑 **Your Active Keys:**\n{keys_list}")
+        else:
+            await update.message.reply_text("🔑 আপনার কোনোভল অ্যাক্টিভ কি (Key) নেই।")
+
+# শপ বাটনের ইনলাইন ক্লিক হ্যান্ডলার
 async def button_handler(update, context):
     query = update.callback_query
     await query.answer()
-    user_id = query.from_user.id
-    bot_username = (await context.bot.get_me()).username
-
-    if query.data == 'referral':
-        ref_link = f"https://t.me/{bot_username}?start={user_id}"
-        total_ref = user_referrals.get(user_id, 0)
-        await query.message.reply_text(
-            f"🔗 **আপনার ব্যক্তিগত রেফারেল লিংক:**\n`{ref_link}`\n\n"
-            f"👥 **মোট রেফারেল:** {total_ref} জন\n"
-            f"🎁 লিংকের মাধ্যমে কাউকে জয়েন করালে পাবেন ১০ পয়েন্ট!"
-        )
-
-    elif query.data == 'points':
-        points = user_points.get(user_id, 0)
-        await query.message.reply_text(f"💳 **আপনার বর্তমান ব্যালেন্স/পয়েন্ট:** {points} Points")
-        
-    elif query.data == 'price':
-        await query.message.reply_text("💰 আমাদের প্রাইস লিস্ট দেখতে চ্যানেলে ভিজিট করুন।")
-    elif query.data == 'contact':
-        await query.message.reply_text("📞 যোগাযোগের জন্য আমাদের টেলিগ্রাম ইউজারনেমে মেসেজ দিন।")
-    elif query.data == 'features':
-        await query.message.reply_text("⚡ প্যানেলের ফিচার এবং সেটআপ সম্পর্কে জানতে গাইড ফলো করুন।")
-    elif query.data == 'buy':
-        await query.message.reply_text("🛒 প্যানেল কেনার নিয়মাবলী দেখে নিন।")
-    elif query.data == 'rules':
-        await query.message.reply_text("🟩 অফিসিয়াল রুলস এবং সেফটি মেনে চলুন।")
+    
+    products = {
+        'p1': 'DRIP CLIENT NON ROOT',
+        'p2': 'BR MOD ROOT',
+        'p3': 'ANGRY MOD',
+        'p4': 'PRIME MOD',
+        'p5': 'HG CHEAT',
+        'p6': 'zytron Pro Internal',
+        'p7': 'Anonymous Pro'
+    }
+    
+    prod_name = products.get(query.data, 'Product')
+    await query.message.reply_text(f"🛒 আপনি সিলেক্ট করেছেন: **{prod_name}**\nপেমেন্ট বা কেনার বিস্তারিত জানতে এডমিনের সাথে যোগাযোগ করুন।")
 
 def main():
-    # বট অ্যাপ্লিকেশন তৈরি
     application = Application.builder().token(TOKEN).build()
 
-    # কমান্ড এবং বাটন হ্যান্ডলার যোগ করা
     application.add_handler(CommandHandler("start", start))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler))
     application.add_handler(CallbackQueryHandler(button_handler))
 
-    # বট চালু করা
     application.run_polling()
 
 if __name__ == '__main__':
