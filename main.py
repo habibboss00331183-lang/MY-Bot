@@ -2,8 +2,8 @@ import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
 
-# আপনার টেলিগ্রাম বটের টোকেন
-TOKEN = "7961226740:AAEMf06xUj1V63r84FF8d1Z6kD7f4xX7x-g"
+# আপনার টেলিগ্রাম বটের সঠিক টোকেন
+TOKEN = "8806345012:AAFxivp7Qnh-dJccphN2Fhf-gIVp5fZs9NQ"
 
 # লগিং সেটআপ
 logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
