@@ -3,7 +3,7 @@ import random
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
 
-# আপনার সঠিক টেলিগ্রাম টোকেন এবং শপ লিংক
+# আপনার টেলিগ্রাম টোকেন এবং শপ লিংক
 TOKEN = "8806345012:AAFxivp7Qnh-dJccphN2Fhf-gIVp5fZs9NQ"
 SHOP_FILE_LINK = "https://gofile.io/d/OYS4MC9v"
 
@@ -39,36 +39,40 @@ def get_main_keyboard():
 
 # /start কমান্ড হ্যান্ডলার
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user_id = update.effective_user.id
-    user_name = update.effective_user.first_name
+    user = update.effective_user
+    user_id = user.id
+    user_name = user.first_name
     
     args = context.args
     
     if user_id not in user_data:
         user_data[user_id] = {
             "name": user_name,
-            "points": 5000,  # টেস্ট করার জন্য পর্যাপ্ত পয়েন্ট দেওয়া হলো
+            "points": 0,  # নতুন ইউজারের ব্যালেন্স ০
             "keys": [],
             "referrals": 0
         }
 
-    # রেফারেল লজিক
+    # রেফারেল লজিক (প্রতি রেফারে ২০ পয়েন্ট)
     if args and args[0].isdigit():
         referrer_id = int(args[0])
+        # নিজের লিঙ্কে নিজে যেন রেফার কাউন্ট না হয় এবং সে যেন ডাটাবেজে থাকে
         if referrer_id != user_id and referrer_id in user_data:
-            user_data[referrer_id]["points"] += 200
+            # চেক করতে পারি ইউজার আগে একবার রেফার হয়েছে কি না, তবে সিম্পল রাখার জন্য প্রতি স্টার্টে কাউন্ট হবে
+            user_data[referrer_id]["points"] += 20
             user_data[referrer_id]["referrals"] += 1
             try:
                 await context.bot.send_message(
                     chat_id=referrer_id,
-                    text="🎁 Earn 200 points for each valid referral.\n🎉 অভিনন্দন! আপনার রেফারেল লিংক থেকে একজন নতুন ইউজার যুক্ত হয়েছে এবং আপনি ২০০ পয়েন্ট বোনাস পেয়েছেন!"
+                    text="🎁 অভিনন্দন! আপনার রেফারেল লিংক থেকে একজন নতুন ইউজার যুক্ত হয়েছে এবং আপনি ২০ পয়েন্ট বোনাস পেয়েছেন!"
                 )
             except:
                 pass
 
     welcome_msg = (
-        f"🤖 **Welcome to FF Panel Shop Official Bot!**\n\n"
+        f"🤖 *Welcome to FF Panel Shop Official Bot!*\n\n"
         f"👤 User: {user_name}\n"
+        f"🆔 User ID: `{user_id}`\n"
         f"💎 Balance: {user_data[user_id]['points']} Points\n\n"
         f"নিচের মেনু থেকে আপনার প্রয়োজনীয় অপশন বেছে নিন।"
     )
@@ -78,13 +82,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 # টেক্সট মেসেজ ও বাটন হ্যান্ডলার
 async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     text = update.message.text
-    user_id = update.effective_user.id
-    user_name = update.effective_user.first_name
+    user = update.effective_user
+    user_id = user.id
+    user_name = user.first_name
 
     if user_id not in user_data:
         user_data[user_id] = {
             "name": user_name,
-            "points": 5000,
+            "points": 0,
             "keys": [],
             "referrals": 0
         }
@@ -92,7 +97,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if text == "👤 Profile":
         u_data = user_data[user_id]
         profile_text = (
-            f"👤 **প্রফাইল তথ্য:**\n\n"
+            f"👤 *প্রফাইল তথ্য:*\n\n"
             f"👤 নাম: {u_data['name']}\n"
             f"🆔 ইউজার আইডি: `{user_id}`\n"
             f"💎 Balance: {u_data['points']} Points\n"
@@ -101,14 +106,17 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await update.message.reply_text(profile_text, parse_mode="Markdown")
 
     elif text == "🔗 Refer":
+        # বটের ইউজারনেম ডাইনামিকলি ফেচ করা যাতে ১০০% নিখুঁত লিংক তৈরি হয়
         bot_username = context.bot.username
         refer_link = f"https://t.me/{bot_username}?start={user_id}"
+        
         refer_text = (
-            f"🔗 **Your Referral Link**\n\n"
+            f"🔗 *Your Unique Referral Link*\n\n"
             f"`{refer_link}`\n\n"
-            f"👥 Total Referrals: {user_data[user_id]['referrals']}\n"
-            f"🎁 Earn 200 points for each valid referral."
+            f"👥 Total Referrals: {user_data[user_id]['referrals']} জন\n"
+            f"🎁 Earn 20 points for each valid referral."
         )
+        # Markdown ব্যবহার করে লিংকটি সুন্দরভাবে পাঠানো হলো
         await update.message.reply_text(refer_text, parse_mode="Markdown")
 
     elif text == "🎟 Redeem Code":
@@ -126,7 +134,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         keyboard = [[InlineKeyboardButton("🌐 Open Shop Website", url=SHOP_FILE_LINK)]]
         reply_markup = InlineKeyboardMarkup(keyboard)
         shop_text = (
-            f"🛍 **Welcome to our Official Shop!**\n\n"
+            f"🛍 *Welcome to our Official Shop!*\n\n"
             f"You can buy premium products directly from our website.\n\n"
             f"🔗 Click here: {SHOP_FILE_LINK}"
         )
@@ -138,7 +146,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             await update.message.reply_text("❌ You have not purchased any keys yet!")
         else:
             keys_list = "\n".join(user_keys)
-            await update.message.reply_text(f"🔑 **Your Keys:**\n\n{keys_list}", parse_mode="Markdown")
+            await update.message.reply_text(f"🔑 *Your Keys:*\n\n{keys_list}", parse_mode="Markdown")
 
     else:
         await update.message.reply_text("দয়া করে নিচের মেনু বাটনগুলো ব্যবহার করুন।", reply_markup=get_main_keyboard())
@@ -150,7 +158,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     user_id = query.from_user.id
 
     if user_id not in user_data:
-        user_data[user_id] = {"name": query.from_user.first_name, "points": 5000, "keys": [], "referrals": 0}
+        user_data[user_id] = {"name": query.from_user.first_name, "points": 0, "keys": [], "referrals": 0}
 
     data = query.data
 
@@ -192,11 +200,11 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         
         current_points = user_data[user_id]["points"]
         
-        # ব্যালেন্স কম থাকলে শপ লিংকের সাথে এরর দেখাবে
+        # ব্যালেন্স কম থাকলে শপ লিংকের সাথে মেসেজ দেখাবে
         if current_points < cost:
             keyboard = [[InlineKeyboardButton("🌐 Open Shop Website", url=SHOP_FILE_LINK)]]
             await query.message.reply_text(
-                f"❌ Not enough balance!\n\n🔗 Click here: {SHOP_FILE_LINK}",
+                f"❌ Not enough balance! Your current balance is {current_points} Points.\n\n🔗 Click here to get points/shop:",
                 reply_markup=InlineKeyboardMarkup(keyboard)
             )
         else:
@@ -207,7 +215,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             p_name = "BR MOD ROOT" if product_type == "br" else "DRIP CLIENT NON ROOT"
             
             await query.edit_message_text(
-                text=f"✅ সফলভাবে আপনার **{p_name}** কী (Key) জেনারেট হয়েছে!\n\n🔑 পাসওয়ার্ড: `{assigned_key}`\n\nএটি '📁 My Keys' অপশনে সংরক্ষিত হয়েছে।"
+                text=f"✅ সফলভাবে আপনার *{p_name}* কী (Key) জেনারেট হয়েছে!\n\n🔑 পাসওয়ার্ড: `{assigned_key}`\n\nএটি '📁 My Keys' অপশনে সংরক্ষিত হয়েছে।"
             )
 
 def main():
