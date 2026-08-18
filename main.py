@@ -41,7 +41,8 @@ def get_main_menu():
     return ReplyKeyboardMarkup([
         [KeyboardButton("👤 Profile"), KeyboardButton("🔗 Refer")],
         [KeyboardButton("🎟 Redeem Code"), KeyboardButton("🔑 Get Key")],
-        [KeyboardButton("🛒 Shop Now"), KeyboardButton("📁 My Keys")]
+        [KeyboardButton("📋 Tasks"), KeyboardButton("🛒 Shop Now")],
+        [KeyboardButton("📁 My Keys")]
     ], resize_keyboard=True)
 
 def get_join_menu():
@@ -50,6 +51,23 @@ def get_join_menu():
         [InlineKeyboardButton("👥 Join Our Group", url=WHATSAPP_GROUP_LINK)],
         [InlineKeyboardButton("✅ জয়েন করেছি, চেক করুন", callback_data="check_join")]
     ])
+
+def get_tasks_menu(u_data):
+    tg_status = "✅ Done (+30 Pts)" if u_data.get("task_tg_claimed") else "➡️ Join Telegram (+30 Pts)"
+    wa_status = "✅ Done (+30 Pts)" if u_data.get("task_wa_claimed") else "➡️ Join WhatsApp (+30 Pts)"
+    
+    kb = []
+    if not u_data.get("task_tg_claimed"):
+        kb.append([InlineKeyboardButton(tg_status, callback_data="claim_tg_task")])
+    else:
+        kb.append([InlineKeyboardButton(tg_status, callback_data="already_claimed")])
+        
+    if not u_data.get("task_wa_claimed"):
+        kb.append([InlineKeyboardButton(wa_status, callback_data="claim_wa_task")])
+    else:
+        kb.append([InlineKeyboardButton(wa_status, callback_data="already_claimed")])
+        
+    return InlineKeyboardMarkup(kb)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
@@ -61,7 +79,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "name": user_name,
             "points": 0,
             "keys": [],
-            "referrals": 0
+            "referrals": 0,
+            "task_tg_claimed": False,
+            "task_wa_claimed": False
         }
         save_data(bot_data)
     else:
@@ -97,6 +117,30 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await context.bot.send_message(query.from_user.id, "✅ স্বাগতম! মেনু থেকে কাজ শুরু করুন।", reply_markup=get_main_menu())
         else:
             await query.message.reply_text("❌ আপনি এখনো জয়েন করেননি!", reply_markup=get_join_menu())
+
+    elif query.data == "claim_tg_task":
+        if await is_member(context.bot, query.from_user.id):
+            if not bot_data["users"][user_id].get("task_tg_claimed", False):
+                bot_data["users"][user_id]["points"] += 30
+                bot_data["users"][user_id]["task_tg_claimed"] = True
+                save_data(bot_data)
+                await query.edit_message_text("🎉 অভিনন্দন! টেলিগ্রাম চ্যানেলে জয়েন করার জন্য আপনি ৩০ পয়েন্ট পেয়েছেন।", reply_markup=get_tasks_menu(bot_data["users"][user_id]))
+            else:
+                await query.message.reply_text("❌ আপনি ইতিমধ্যে এই টাস্কটির পয়েন্ট পেয়ে গেছেন!")
+        else:
+            await query.message.reply_text("❌ আগে টেলিগ্রাম চ্যানেলে জয়েন করুন!", reply_markup=get_join_menu())
+
+    elif query.data == "claim_wa_task":
+        if not bot_data["users"][user_id].get("task_wa_claimed", False):
+            bot_data["users"][user_id]["points"] += 30
+            bot_data["users"][user_id]["task_wa_claimed"] = True
+            save_data(bot_data)
+            await query.edit_message_text("🎉 অভিনন্দন! হোয়াটসঅ্যাপ চ্যানেলে জয়েন করার জন্য আপনি ৩০ পয়েন্ট পেয়েছেন।", reply_markup=get_tasks_menu(bot_data["users"][user_id]))
+        else:
+            await query.message.reply_text("❌ আপনি ইতিমধ্যে এই টাস্কটির পয়েন্ট পেয়ে গেছেন!")
+
+    elif query.data == "already_claimed":
+        await query.message.reply_text("✅ এই টাস্কটির পয়েন্ট আপনি আগেই ক্লেইম করেছেন।")
 
     elif query.data == "select_br":
         kb = [
@@ -148,7 +192,9 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "name": user_name,
             "points": 0,
             "keys": [],
-            "referrals": 0
+            "referrals": 0,
+            "task_tg_claimed": False,
+            "task_wa_claimed": False
         }
         save_data(bot_data)
 
@@ -169,6 +215,10 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         referral_link = f"https://t.me/{bot_username}?start={user_id}"
         msg = f"🔗 Your Unique Referral Link:\n\n{referral_link}\n\n👥 Total Referrals: {u.get('referrals')} জন\n🎁 Earn 20 points for each valid referral."
         await update.message.reply_text(msg)
+
+    elif text == "📋 Tasks":
+        u = bot_data["users"].get(user_id, {})
+        await update.message.reply_text("📋 নিচের চ্যানেলগুলোতে জয়েন করে পয়েন্ট ক্লেইম করুন (প্রতিটি ৩০ পয়েন্ট):", reply_markup=get_tasks_menu(u))
 
     elif text == "🔑 Get Key":
         kb = [
