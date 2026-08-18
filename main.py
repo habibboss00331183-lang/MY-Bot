@@ -236,7 +236,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("📦 BR MOD ROOT", callback_data="select_br")],
             [InlineKeyboardButton("📦 DRIP CLIENT NON ROOT", callback_data="select_drip")]
         ]
-        await update.message.reply_text("💎 Select a Product:", reply_markup=InlineKeyboardMarkup(kb))
+        await query_or_message = update.message.reply_text("💎 Select a Product:", reply_markup=InlineKeyboardMarkup(kb))
 
     elif text == "📁 My Keys":
         keys = bot_data["users"].get(user_id, {}).get("keys", [])
