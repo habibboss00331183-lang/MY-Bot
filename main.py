@@ -1,238 +1,106 @@
 import logging
 import random
+import json
+import os
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters, ContextTypes
 
-# আপনার টেলিগ্রাম টোকেন এবং শপ লিংক
 TOKEN = "8806345012:AAFxivp7Qnh-dJccphN2Fhf-gIVp5fZs9NQ"
 SHOP_FILE_LINK = "https://gofile.io/d/OYS4MC9v"
+DATA_FILE = "users_data.json"
+TELEGRAM_CHANNEL = "@ffpanelshopofficial"
 
-# লগিং সেটআপ
-logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
-logger = logging.getLogger(__name__)
+# ডাটা লোড ও সেভ সিস্টেম
+def load_data():
+    if os.path.exists(DATA_FILE):
+        with open(DATA_FILE, "r") as f:
+            return json.load(f)
+    return {}
 
-# ইউজার ডেটা সংরক্ষণের জন্য ডিকশনারি
-user_data = {}
+def save_data(data):
+    with open(DATA_FILE, "w") as f:
+        json.dump(data, f)
 
-# প্যানেলের জন্য ঠিক ৫০টি ইউনিক পাসওয়ার্ড বা কি (Key) লিস্ট
-PANEL_KEYS = [
-    "TGR-DRIP-98X7Y-Z65QW-2026", "BRMOD-PASS-43KJH-89LMN-PRO", "FF-PANEL-X99V2-B77RT-VIP",
-    "SECURE-KEY-88HGF-33DSA-M1", "ADMIN-TGR-55ABC-77XYZ-PASS", "EXPERT-MOD-12QWE-99POI-LK",
-    "LOCKED-KEY-0099V-44BNM-END", "VIP-PANEL-777GH-55JYU-KEY", "CLIENT-MOD-1199A-22BCX-OP",
-    "ULTRA-KEY-5544N-33MKO-SYS", "TGR-PRO-111AA-222BB-CC", "BRMOD-VIP-999ZZ-888YY-XX",
-    "FF-HACK-55443-22110-PASS", "SECURE-NET-12345-67890-KEY", "ADMIN-BD-98765-43210-SYS",
-    "KEY-GEN-11223-33445-PRO", "PANEL-ROOT-55667-77889-VIP", "FREE-FIRE-99001-11223-MOD",
-    "DRIP-KEY-44332-22110-SAFE", "TGR-SHOP-77889-99001-PASS", "MOD-BD-12312-34534-PRO",
-    "CLIENT-ROOT-98798-65465-KEY", "VIP-USER-11223-44556-SYS", "POWER-KEY-77665-55443-OP",
-    "FAST-MOD-33221-11009-VIP", "AUTO-KEY-99887-77665-PRO", "GAME-PASS-55443-33221-SAFE",
-    "ROOT-SYS-11223-99887-KEY", "ANDROID-MOD-44556-66778-PASS", "IOS-PANEL-12398-76543-VIP",
-    "MAX-KEY-88776-55432-PRO", "ULTRA-MOD-11229-99881-SYS", "EXPERT-KEY-33445-55667-SAFE",
-    "MASTER-PANEL-99009-88118-OP", "GHOST-KEY-55667-11223-VIP", "FIRE-MOD-22334-44556-PRO",
-    "SPEED-KEY-77889-11223-SYS", "SMOOTH-MOD-33445-66778-PASS", "NO-LAG-99887-44556-VIP",
-    "SAFE-KEY-11223-77889-PRO", "CUSTOM-MOD-55667-33445-SAFE", "ONLINE-KEY-99001-22334-SYS",
-    "OFFICIAL-PANEL-44556-77889-OP", "TGR-SPECIAL-12345-98765-VIP", "BR-CLIENT-11223-55667-PRO",
-    "DRIP-MOD-99887-11223-PASS", "FINAL-KEY-55443-77889-SYS", "TOP-PANEL-33221-99887-VIP",
-    "BEST-MOD-11223-44332-PRO", "SECRET-KEY-99009-11223-SAFE"
-]
+user_data = load_data()
 
-# ফিক্সড নিচের মেনু বাটন
+# প্যানেল কী (Keys)
+PANEL_KEYS = ["TGR-DRIP-98X7Y-Z65QW", "BRMOD-PASS-43KJH-89LMN", "FF-PANEL-X99V2-B77RT", "SECURE-KEY-88HGF-33DSA"]
+
+# চ্যানেল জয়েন চেক করার ফাংশন
+async def is_joined(bot, user_id):
+    try:
+        member = await bot.get_chat_member(chat_id=TELEGRAM_CHANNEL, user_id=user_id)
+        return member.status in ["member", "administrator", "creator"]
+    except:
+        return False
+
+# কি-বোর্ড ডিজাইন
 def get_main_keyboard():
-    keyboard = [
+    return ReplyKeyboardMarkup([
         [KeyboardButton("👤 Profile"), KeyboardButton("🔗 Refer")],
         [KeyboardButton("🎟 Redeem Code"), KeyboardButton("🔑 Get Key")],
         [KeyboardButton("🛒 Shop Now"), KeyboardButton("📁 My Keys")]
-    ]
-    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    ], resize_keyboard=True)
 
-# /start কমান্ড হ্যান্ডলার
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user = update.effective_user
-    user_id = user.id
-    user_name = user.first_name
-    
-    args = context.args
-    
-    if user_id not in user_data:
-        user_data[user_id] = {
-            "name": user_name,
-            "points": 0,  # নতুন ইউজারের ব্যালেন্স একদম ০
-            "keys": [],
-            "referrals": 0
-        }
+def get_join_keyboard():
+    return InlineKeyboardMarkup([[InlineKeyboardButton("✅ জয়েন করেছি, চেক করুন", callback_data="check_join")]])
 
-    # রেফারেল লজিক (প্রতি রেফারে সঠিকভাবে ২০ পয়েন্ট)
-    if args and args[0].isdigit():
-        referrer_id = int(args[0])
-        if referrer_id != user_id and referrer_id in user_data:
-            user_data[referrer_id]["points"] += 20
-            user_data[referrer_id]["referrals"] += 1
-            try:
-                await context.bot.send_message(
-                    chat_id=referrer_id,
-                    text="🎁 অভিনন্দন! আপনার রেফারেল লিংক থেকে একজন নতুন ইউজার যুক্ত হয়েছে এবং আপনি ২০ পয়েন্ট বোনাস পেয়েছেন!"
-                )
-            except:
-                pass
-
-    welcome_msg = (
-        f"🤖 Welcome to FF Panel Shop Official Bot!\n\n"
-        f"👤 User: {user_name}\n"
-        f"🆔 User ID: {user_id}\n"
-        f"💎 Balance: {user_data[user_id]['points']} Points\n\n"
-        f"নিচের মেনু থেকে আপনার প্রয়োজনীয় অপশন বেছে নিন।"
-    )
-
-    await update.message.reply_text(welcome_msg, reply_markup=get_main_keyboard())
-
-# টেক্সট মেসেজ ও বাটন হ্যান্ডলার
-async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    text = update.message.text
-    user = update.effective_user
-    user_id = user.id
-    user_name = user.first_name
-
-    if user_id not in user_data:
-        user_data[user_id] = {
-            "name": user_name,
-            "points": 0,
-            "keys": [],
-            "referrals": 0
-        }
-
-    if text == "👤 Profile":
-        u_data = user_data[user_id]
-        profile_text = (
-            f"👤 প্রফাইল তথ্য:\n\n"
-            f"👤 নাম: {u_data['name']}\n"
-            f"🆔 ইউজার আইডি: {user_id}\n"
-            f"💎 Balance: {u_data['points']} Points\n"
-            f"👥 মোট রেফার: {u_data['referrals']} জন"
-        )
-        await update.message.reply_text(profile_text)
-
-    elif text == "🔗 Refer":
-        bot_username = context.bot.username
-        # প্রতিটি ইউজারের জন্য সম্পূর্ণ আলাদা এবং ইউনিক রেফার লিংক
-        refer_link = f"https://t.me/{bot_username}?start={user_id}"
-        
-        refer_text = (
-            f"🔗 Your Unique Referral Link:\n\n"
-            f"{refer_link}\n\n"
-            f"👥 Total Referrals: {user_data[user_id]['referrals']} জন\n"
-            f"🎁 Earn 20 points for each valid referral."
-        )
-        await update.message.reply_text(refer_text)
-
-    elif text == "🎟 Redeem Code":
-        await update.message.reply_text("🎟 Enter your redeem code.")
-
-    elif text == "🔑 Get Key":
-        keyboard = [
-            [InlineKeyboardButton("📦 BR MOD ROOT", callback_data="menu_br")],
-            [InlineKeyboardButton("📦 DRIP CLIENT NON ROOT", callback_data="menu_drip")]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await update.message.reply_text("💎 Select a Product:", reply_markup=reply_markup)
-
-    elif text == "🛒 Shop Now":
-        keyboard = [[InlineKeyboardButton("🌐 Open Shop Website", url=SHOP_FILE_LINK)]]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        shop_text = (
-            f"🛍 Welcome to our Official Shop!\n\n"
-            f"You can buy premium products directly from our website.\n\n"
-            f"🔗 Click here: {SHOP_FILE_LINK}"
-        )
-        await update.message.reply_text(shop_text, reply_markup=reply_markup)
-
-    elif text == "📁 My Keys":
-        user_keys = user_data[user_id]["keys"]
-        if not user_keys:
-            await update.message.reply_text("❌ You have not purchased any keys yet!")
-        else:
-            keys_list = "\n".join(user_keys)
-            await update.message.reply_text(f"🔑 Your Keys:\n\n{keys_list}")
-
+# স্টার্ট হ্যান্ডেলার
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if not await is_joined(context.bot, user_id):
+        await update.message.reply_text("⚠️ বট ব্যবহারের জন্য আমাদের চ্যানেলে জয়েন করুন:", reply_markup=get_join_keyboard())
     else:
-        await update.message.reply_text("দয়া করে নিচের মেনু বাটনগুলো ব্যবহার করুন।", reply_markup=get_main_keyboard())
+        if str(user_id) not in user_data:
+            user_data[str(user_id)] = {"name": update.effective_user.first_name, "points": 0, "keys": [], "referrals": 0}
+            save_data(user_data)
+        await update.message.reply_text("🤖 স্বাগতম! নিচে মেনু থেকে আপনার প্রয়োজন বেছে নিন।", reply_markup=get_main_keyboard())
 
-# ইনলাইন বাটন ক্লিক হ্যান্ডলার
-async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+# মেসেজ হ্যান্ডেলার
+async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if not await is_joined(context.bot, user_id):
+        await update.message.reply_text("⚠️ আগে চ্যানেলে জয়েন করুন!", reply_markup=get_join_keyboard())
+        return
+
+    text = update.message.text
+    if text == "👤 Profile":
+        u = user_data.get(str(user_id), {})
+        await update.message.reply_text(f"👤 নাম: {u.get('name')}\n💎 পয়েন্ট: {u.get('points')}\n👥 রেফার: {u.get('referrals')}")
+    elif text == "🔗 Refer":
+        await update.message.reply_text(f"আপনার রেফারেল লিংক: https://t.me/{context.bot.username}?start={user_id}")
+    elif text == "🔑 Get Key":
+        await update.message.reply_text("প্রোডাক্ট সিলেক্ট করুন:", reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("📦 BR MOD ROOT", callback_data="menu_br")],
+            [InlineKeyboardButton("📦 DRIP CLIENT", callback_data="menu_drip")]
+        ]))
+    elif text == "🛒 Shop Now":
+        await update.message.reply_text(f"অফিসিয়াল শপ: {SHOP_FILE_LINK}")
+    elif text == "📁 My Keys":
+        keys = user_data.get(str(user_id), {}).get("keys", [])
+        await update.message.reply_text(f"আপনার কী (Keys): {', '.join(keys) if keys else 'কোনো কী নেই'}")
+
+# বাটন হ্যান্ডেলার
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    user_id = query.from_user.id
-
-    if user_id not in user_data:
-        user_data[user_id] = {"name": query.from_user.first_name, "points": 0, "keys": [], "referrals": 0}
-
-    data = query.data
-
-    if data == "menu_br":
-        keyboard = [
-            [InlineKeyboardButton("1 days - 210 Pts", callback_data="buy_br_210")],
-            [InlineKeyboardButton("7 days - 600 Pts", callback_data="buy_br_600")],
-            [InlineKeyboardButton("15 Days - 1000 Pts", callback_data="buy_br_1000")],
-            [InlineKeyboardButton("30 Days - 1900 Pts", callback_data="buy_br_1900")],
-            [InlineKeyboardButton("🔙 Back", callback_data="back_to_main")]
-        ]
-        await query.edit_message_text(text="💎 Select a Duration:\n\n📦 Product: BR MOD ROOT", reply_markup=InlineKeyboardMarkup(keyboard))
-
-    elif data == "menu_drip":
-        keyboard = [
-            [InlineKeyboardButton("1 days - 310 Pts", callback_data="buy_drip_310")],
-            [InlineKeyboardButton("7 days - 1210 Pts", callback_data="buy_drip_1210")],
-            [InlineKeyboardButton("15 Days - 1890 Pts", callback_data="buy_drip_1890")],
-            [InlineKeyboardButton("30 Days - 3690 Pts", callback_data="buy_drip_3690")],
-            [InlineKeyboardButton("🔙 Back", callback_data="back_to_main")]
-        ]
-        await query.edit_message_text(text="💎 Select a Duration:\n\n📦 Product: DRIP CLIENT NON ROOT", reply_markup=InlineKeyboardMarkup(keyboard))
-
-    elif data == "back_to_main":
-        keyboard = [
-            [InlineKeyboardButton("📦 BR MOD ROOT", callback_data="menu_br")],
-            [InlineKeyboardButton("📦 DRIP CLIENT NON ROOT", callback_data="menu_drip")]
-        ]
-        await query.edit_message_text(text="💎 Select a Product:", reply_markup=InlineKeyboardMarkup(keyboard))
-
-    elif data.startswith("buy_"):
-        parts = data.split("_")
-        product_type = parts[1]
-        cost = int(parts[2])
-        
-        current_points = user_data[user_id]["points"]
-        
-        if current_points < cost:
-            keyboard = [[InlineKeyboardButton("🌐 Open Shop Website", url=SHOP_FILE_LINK)]]
-            await query.message.reply_text(
-                f"❌ Not enough balance! Your current balance is {current_points} Points.\n\n🔗 Click here to get points/shop:",
-                reply_markup=InlineKeyboardMarkup(keyboard)
-            )
+    
+    if query.data == "check_join":
+        if await is_joined(context.bot, query.from_user.id):
+            await query.edit_message_text("✅ ভেরিফিকেশন সফল! এখন মেনু দেখুন।")
+            await context.bot.send_message(query.from_user.id, "🤖 মূল মেনু:", reply_markup=get_main_keyboard())
         else:
-            # ইউনিক পাসওয়ার্ড দেওয়ার লজিক (ইতিমধ্যে যেগুل দেওয়া হয়েছে সেগুলো বাদ দিয়ে বাকিগুলো থেকে রেন্ডম সিলেক্ট করবে)
-            all_assigned_keys = [k for u in user_data.values() for k in u["keys"]]
-            available_keys = [k for k in PANEL_KEYS if k not in all_assigned_keys]
-            
-            if not available_keys:
-                await query.message.reply_text("❌ দুঃখিত, সমস্ত প্যানেল কি (Key) স্টক শেষ হয়ে গেছে!")
-                return
-
-            user_data[user_id]["points"] -= cost
-            assigned_key = random.choice(available_keys)
-            user_data[user_id]["keys"].append(assigned_key)
-            
-            p_name = "BR MOD ROOT" if product_type == "br" else "DRIP CLIENT NON ROOT"
-            
-            await query.edit_message_text(
-                text=f"✅ সফলভাবে আপনার {p_name} কী (Key) জেনারেট হয়েছে!\n\n🔑 পাসওয়ার্ড: {assigned_key}\n\nএটি '📁 My Keys' অপশনে সংরক্ষিত হয়েছে।"
-            )
+            await query.message.reply_text("❌ আপনি এখনো চ্যানেলে জয়েন করেননি!")
+    
+    elif query.data == "menu_br":
+        await query.edit_message_text("BR MOD সিলেক্ট হয়েছে। (পরবর্তী ধাপগুলো এখানে যোগ করুন)")
 
 def main():
-    application = Application.builder().token(TOKEN).build()
-
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CallbackQueryHandler(button_handler))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler))
-
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    app = Application.builder().token(TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CallbackQueryHandler(button_handler))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler))
+    app.run_polling()
 
 if __name__ == "__main__":
     main()
