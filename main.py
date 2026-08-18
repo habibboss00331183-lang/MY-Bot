@@ -15,14 +15,14 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 def load_data():
     if os.path.exists(DATA_FILE):
         try:
-            with open(DATA_FILE, "r") as f: 
+            with open(DATA_FILE, "r") as f:
                 return json.load(f)
-        except:
+        except Exception:
             pass
     return {"users": {}, "redeem_codes": {}}
 
 def save_data(data):
-    with open(DATA_FILE, "w") as f: 
+    with open(DATA_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
 bot_data = load_data()
@@ -34,7 +34,7 @@ async def is_member(bot, user_id):
     try:
         member = await bot.get_chat_member(chat_id=TELEGRAM_CHANNEL, user_id=user_id)
         return member.status in ['member', 'administrator', 'creator']
-    except:
+    except Exception:
         return False
 
 def get_main_menu():
@@ -98,7 +98,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 save_data(bot_data)
                 try:
                     await context.bot.send_message(int(ref_id), "🎉 আপনার রেফারেল লিংক দিয়ে একজন নতুন ইউজার জয়েন করেছে! আপনি ২০ পয়েন্ট পেয়েছেন।")
-                except:
+                except Exception:
                     pass
 
     if not await is_member(context.bot, user.id):
