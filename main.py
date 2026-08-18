@@ -271,9 +271,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("🎟️ Enter your redeem code.")
 
 def main():
-    # Start web server thread
     keep_alive()
-    
     app = Application.builder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(button_handler))
